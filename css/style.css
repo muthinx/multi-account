@@ -1386,10 +1386,11 @@ body.sidebar-open {
 }
 
 .account-notes {
-  color: var(--text-muted);
+  color: var(--text-primary);
   font-size: 0.875rem;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
   border-top: 1px dashed var(--border-color);
 }
 
