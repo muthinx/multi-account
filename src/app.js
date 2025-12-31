@@ -158,8 +158,26 @@ function loadDashboard() {
           </div>
           
           <div class="form-group">
+            <label for="account-background">Background URL (opsional)</label>
+            <input type="url" id="account-background" class="form-control" placeholder="https://example.com/background.jpg">
+            <small>Kosongkan untuk gradient otomatis</small>
+          </div>
+          
+          <div class="form-group">
             <label for="account-notes">Catatan (opsional)</label>
             <textarea id="account-notes" class="form-control" placeholder="Informasi tambahan..." rows="3"></textarea>
+          </div>
+          
+          <!-- Preview Section -->
+          <div class="preview-section" id="preview-section" style="display: none;">
+            <h4>Preview Card:</h4>
+            <div class="preview-card" id="preview-card">
+              <div class="preview-card-header" id="preview-header"></div>
+              <div class="preview-card-body">
+                <h4 id="preview-name">Nama Akun</h4>
+                <p id="preview-url">https://example.com</p>
+              </div>
+            </div>
           </div>
           
           <div class="modal-actions">
@@ -233,6 +251,7 @@ function loadDashboard() {
             <button type="button" class="btn btn-secondary" id="import-cancel-btn">Batal</button>
             <button type="button" class="btn btn-primary" id="import-confirm-btn">Import Data</button>
           </div>
+          
         </div>
       </div>
     </div>
@@ -477,13 +496,14 @@ function renderAccounts() {
   
   container.innerHTML = accounts.map((account, index) => `
     <div class="account-card" data-id="${account.id}">
-      <div class="account-card-header">
+      <div class="account-card-header" style="${getCardHeaderStyle(account)}">
+        <div class="account-card-overlay"></div>
         <img src="${getAvatarUrl(account)}" alt="${account.name}" class="account-avatar">
         <div class="account-actions">
-          <button class="btn-icon edit-account" data-index="${index}">
+          <button class="btn-icon edit-account" data-index="${index}" title="Edit">
             <i class="fas fa-edit"></i>
           </button>
-          <button class="btn-icon delete-account" data-index="${index}">
+          <button class="btn-icon delete-account" data-index="${index}" title="Hapus">
             <i class="fas fa-trash"></i>
           </button>
         </div>
@@ -494,14 +514,14 @@ function renderAccounts() {
         ${account.notes ? `<p class="account-notes">${account.notes}</p>` : ''}
       </div>
       <div class="account-card-footer">
-        <button class="btn btn-outline open-account" data-url="${account.url}">
-          <i class="fas fa-external-link-alt"></i> Home
+        <button class="btn btn-outline open-account" data-url="${account.url}profile.php">
+          <i class="fa-solid fa-house"></i> Home 
         </button>
         <button class="btn btn-outline open-account" data-url="${account.url}messages">
-          <i class="fas fa-external-link-alt"></i> Pesan
+          <i class="fa-solid fa-message"></i> Pesan
         </button>
         <button class="btn btn-outline open-account" data-url="${account.url}marketplace%2Fyou%2Fdashboard">
-          <i class="fas fa-external-link-alt"></i> Dashboard
+          <i class="fa-solid fa-shop"></i> Shop 
         </button>
       </div>
     </div>
@@ -539,6 +559,24 @@ function getAvatarUrl(account) {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(account.name)}&background=4f46e5&color=fff&bold=true&size=128`;
 }
 
+function getCardHeaderStyle(account) {
+  let style = '';
+  
+  // Jika ada background image
+  if (account.background) {
+    style += `background-image: url('${account.background}'); `;
+    style += `background-size: cover; `;
+    style += `background-position: center; `;
+  } else {
+    // Gradient default berdasarkan nama
+    const colors = generateGradient(account.name);
+    style += `background: linear-gradient(135deg, ${colors[0]}, ${colors[1]}); `;
+  }
+  
+  return style;
+}
+
+
 function formatDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString('id-ID', {
@@ -552,15 +590,19 @@ function openAccountModal(index = null) {
   const modal = document.getElementById('account-modal');
   const form = document.getElementById('account-form');
   const title = document.getElementById('modal-title');
+  const previewSection = document.getElementById('preview-section');
   
   if (index !== null && accounts[index]) {
     // Edit mode
     title.textContent = 'Edit Akun';
     const account = accounts[index];
+    
     document.getElementById('account-name').value = account.name;
     document.getElementById('account-url').value = account.url;
     document.getElementById('account-avatar').value = account.avatar || '';
+    document.getElementById('account-background').value = account.background || '';
     document.getElementById('account-notes').value = account.notes || '';
+    
     form.dataset.editIndex = index;
   } else {
     // Add mode
@@ -568,6 +610,17 @@ function openAccountModal(index = null) {
     form.reset();
     delete form.dataset.editIndex;
   }
+  
+  // Tampilkan preview section
+  previewSection.style.display = 'block';
+  
+  // Update preview
+  updatePreview();
+  
+  // Event listeners untuk live preview
+  document.getElementById('account-name').addEventListener('input', updatePreview);
+  document.getElementById('account-avatar').addEventListener('input', updatePreview);
+  document.getElementById('account-background').addEventListener('input', updatePreview);
   
   modal.classList.add('active');
   document.getElementById('account-name').focus();
@@ -584,6 +637,7 @@ function saveAccount() {
   const name = document.getElementById('account-name').value.trim();
   const url = document.getElementById('account-url').value.trim();
   const avatar = document.getElementById('account-avatar').value.trim();
+  const background = document.getElementById('account-background').value.trim();
   const notes = document.getElementById('account-notes').value.trim();
   
   if (!name || !url) {
@@ -596,6 +650,7 @@ function saveAccount() {
     name,
     url: url.startsWith('http') ? url : `https://${url}`,
     avatar: avatar || null,
+    background: background || null,
     notes: notes || null,
     createdAt: new Date().toISOString()
   };
@@ -622,8 +677,8 @@ function saveAccount() {
   // Update UI
   renderAccounts();
   updateStats();
-  updateSidebarStats(); // TAMBAHKAN INI
-  addActivity(activityMessage); // TAMBAHKAN INI
+  updateSidebarStats();
+  addActivity(activityMessage);
   closeAccountModal();
 }
 
@@ -647,24 +702,40 @@ function saveToLocalStorage() {
 function filterAccounts(searchTerm) {
   const container = document.getElementById('accounts-container');
   const allCards = container.querySelectorAll('.account-card');
-  
+
+  // Jika input kosong → tampilkan semua
   if (!searchTerm) {
     allCards.forEach(card => card.style.display = 'block');
     return;
   }
-  
+
   const term = searchTerm.toLowerCase();
+
   allCards.forEach(card => {
-    const name = card.querySelector('.account-name').textContent.toLowerCase();
-    const url = card.querySelector('.account-url').textContent.toLowerCase();
+    // Nama akun (wajib ada)
+    const name = card
+      .querySelector('.account-name')
+      .textContent
+      .toLowerCase();
+
+    // Catatan (opsional)
     const notesEl = card.querySelector('.account-notes');
     const notes = notesEl ? notesEl.textContent.toLowerCase() : '';
-    
-    if (name.includes(term) || url.includes(term) || notes.includes(term)) {
-      card.style.display = 'block';
-    } else {
-      card.style.display = 'none';
-    }
+
+    // URL dari data-url tombol (bisa lebih dari satu)
+    const urls = Array.from(card.querySelectorAll('.open-account'))
+      .map(btn => btn.dataset.url || '')
+      .join(' ')
+      .toLowerCase();
+
+    // Logika pencarian
+    const isMatch =
+      name.includes(term) ||
+      notes.includes(term) ||
+      urls.includes(term);
+
+    // Tampilkan / sembunyikan card
+    card.style.display = isMatch ? 'block' : 'none';
   });
 }
 
@@ -679,6 +750,56 @@ function updateStats() {
   // Juga update stat di sidebar
   updateSidebarStats();
 }
+
+function updatePreview() {
+  const name = document.getElementById('account-name').value || 'Nama Akun';
+  const url = document.getElementById('account-url').value || 'https://example.com';
+  const avatar = document.getElementById('account-avatar').value;
+  const background = document.getElementById('account-background').value;
+  
+  // Update preview name dan URL
+  document.getElementById('preview-name').textContent = name;
+  document.getElementById('preview-url').textContent = url;
+  
+  // Update preview header background
+  const previewHeader = document.getElementById('preview-header');
+  
+  if (background) {
+    // Jika ada background image
+    previewHeader.style.backgroundImage = `url('${background}')`;
+    previewHeader.style.backgroundSize = 'cover';
+    previewHeader.style.backgroundPosition = 'center';
+  } else {
+    // Gradient default berdasarkan nama
+    const colors = generateGradient(name);
+    previewHeader.style.backgroundImage = 'none';
+    previewHeader.style.background = `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`;
+  }
+  
+  // Update preview avatar
+  const avatarUrl = avatar || getDefaultAvatarUrl(name);
+  previewHeader.innerHTML = `
+    <img src="${avatarUrl}" alt="${name}" class="preview-avatar">
+  `;
+}
+
+function getDefaultAvatarUrl(name) {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4f46e5&color=fff&bold=true`;
+}
+
+function generateGradient(text) {
+  // Generate warna konsisten berdasarkan text
+  const hash = Array.from(text).reduce((acc, char) => {
+    return char.charCodeAt(0) + ((acc << 5) - acc);
+  }, 0);
+  
+  const hue = hash % 360;
+  const color1 = `hsl(${hue}, 70%, 60%)`;
+  const color2 = `hsl(${(hue + 150) % 360}, 70%, 50%)`;
+  
+  return [color1, color2];
+}
+
 
 // ========== EXPORT/IMPORT FUNCTIONS ==========
 
@@ -905,8 +1026,8 @@ function processImport(importedData, method) {
     saveToLocalStorage();
     renderAccounts();
     updateStats();
-    updateSidebarStats(); // TAMBAHKAN INI
-    addActivity(activityMessage); // TAMBAHKAN INI
+    updateSidebarStats(); 
+    addActivity(activityMessage);
   }
   
   closeImportModal();
