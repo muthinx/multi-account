@@ -80,7 +80,7 @@ function loadDashboard() {
                 <span class="stat-value" id="stat-total">${accounts.length}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Ditambahkan Hari Ini</span>
+                <span class="stat-label">Dimoderasi Hari Ini</span>
                 <span class="stat-value" id="stat-today">0</span>
               </div>
               <div class="stat-item">
